@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { MilestoneLevel, Profile, TargetSkill } from '../../../types'
-import { SKILL_CONTENT, describeCurrentState, describeNextStep } from './skillContent'
-import { SKILL_LABELS, STAGE_COUNT } from './trackConfig'
+import { getSkillContent, describeCurrentState, describeNextStep } from './skillContent'
+import { STAGE_COUNT } from './trackConfig'
 import type { AppLocale } from '../../../i18n'
 import { useI18n } from '../../../i18n'
 import { LanguageSelector } from '../../../components/LanguageSelector'
@@ -22,11 +22,62 @@ interface Props {
 }
 
 const MILESTONE_ORDER: MilestoneLevel[] = ['beginner', 'developing', 'intermediate', 'advanced']
-const MILESTONE_LABEL: Record<MilestoneLevel, string> = {
-  beginner: 'Beginner',
-  developing: 'Developing',
-  intermediate: 'Intermediate',
-  advanced: 'Advanced',
+const MILESTONE_LABELS: Record<AppLocale, Record<MilestoneLevel, string>> = {
+  'en-GB': {
+    beginner: 'Beginner',
+    developing: 'Developing',
+    intermediate: 'Intermediate',
+    advanced: 'Advanced',
+  },
+  'pt-BR': {
+    beginner: 'Iniciante',
+    developing: 'Evoluindo',
+    intermediate: 'Intermediário',
+    advanced: 'Avançado',
+  },
+}
+
+const SKILL_LABELS: Record<AppLocale, Record<TargetSkill, string>> = {
+  'en-GB': {
+    composition: 'Composition',
+    lighting: 'Lighting',
+    subject_clarity: 'Subject Clarity',
+    pose_expression: 'Pose & Expression',
+    background_control: 'Background',
+  },
+  'pt-BR': {
+    composition: 'Composição',
+    lighting: 'Iluminação',
+    subject_clarity: 'Clareza do sujeito',
+    pose_expression: 'Pose e expressão',
+    background_control: 'Fundo',
+  },
+}
+
+const SKILL_UI_COPY: Record<
+  AppLocale,
+  {
+    level: string
+    whereYouAre: string
+    fullPath: string
+    you: string
+    earned: string
+  }
+> = {
+  'en-GB': {
+    level: 'Level',
+    whereYouAre: 'Where you are',
+    fullPath: 'Full path',
+    you: 'You',
+    earned: 'Earned',
+  },
+  'pt-BR': {
+    level: 'Nível',
+    whereYouAre: 'Onde você está',
+    fullPath: 'Trilha completa',
+    you: 'Você',
+    earned: 'Conquistado',
+  },
 }
 
 function initials(name: string): string {
@@ -82,7 +133,7 @@ export function ProfileSheet({ open, profile, onClose, locale }: Props) {
           </div>
           <DrawerDescription className="sr-only">
             {locale === 'pt-BR'
-              ? 'Seus marcos de fotografia e niveis de habilidade.'
+              ? 'Seus marcos de fotografia e níveis de habilidade.'
               : 'Your photography milestones and skill levels.'}
           </DrawerDescription>
         </DrawerHeader>
@@ -139,7 +190,7 @@ export function ProfileSheet({ open, profile, onClose, locale }: Props) {
                         className={`mt-2 text-center text-[10px] font-medium leading-tight ${reached ? 'text-indigo-200' : 'text-slate-500'
                           }`}
                       >
-                        {MILESTONE_LABEL[m]}
+                        {MILESTONE_LABELS[locale][m]}
                       </span>
                     </li>
                   )
@@ -153,7 +204,7 @@ export function ProfileSheet({ open, profile, onClose, locale }: Props) {
               </p>
               <div className="space-y-3">
                 {skills.map(([skill, { level }]) => (
-                  <SkillCard key={skill} skill={skill} level={level} />
+                  <SkillCard key={skill} skill={skill} level={level} locale={locale} />
                 ))}
               </div>
             </section>
@@ -173,16 +224,18 @@ export function ProfileSheet({ open, profile, onClose, locale }: Props) {
 interface SkillCardProps {
   skill: TargetSkill
   level: number
+  locale: AppLocale
 }
 
-function SkillCard({ skill, level }: SkillCardProps) {
+function SkillCard({ skill, level, locale }: SkillCardProps) {
   const [expanded, setExpanded] = useState(false)
-  const content = SKILL_CONTENT[skill]
+  const content = getSkillContent(locale)[skill]
   const safeLevel = Math.max(0, Math.min(STAGE_COUNT, Math.round(level)))
   const pct = (safeLevel / STAGE_COUNT) * 100
-  const currentState = describeCurrentState(skill, safeLevel)
-  const next = describeNextStep(skill, safeLevel)
+  const currentState = describeCurrentState(skill, safeLevel, locale)
+  const next = describeNextStep(skill, safeLevel, locale)
   const isMaxed = safeLevel >= STAGE_COUNT
+  const uiCopy = SKILL_UI_COPY[locale]
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
@@ -194,7 +247,7 @@ function SkillCard({ skill, level }: SkillCardProps) {
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between gap-3">
-            <h3 className="truncate text-sm font-semibold text-white">{SKILL_LABELS[skill]}</h3>
+            <h3 className="truncate text-sm font-semibold text-white">{SKILL_LABELS[locale][skill]}</h3>
             <span
               className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${isMaxed
                 ? 'bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30'
@@ -203,7 +256,7 @@ function SkillCard({ skill, level }: SkillCardProps) {
                   : 'bg-indigo-500/15 text-indigo-300 ring-1 ring-inset ring-indigo-500/30'
                 }`}
             >
-              Level {safeLevel}/{STAGE_COUNT}
+              {uiCopy.level} {safeLevel}/{STAGE_COUNT}
             </span>
           </div>
           <p className="mt-1 text-[11px] leading-snug text-slate-500">{content.blurb}</p>
@@ -219,7 +272,7 @@ function SkillCard({ skill, level }: SkillCardProps) {
           </div>
 
           <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Where you are
+            {uiCopy.whereYouAre}
           </p>
           <p className="mt-1 text-sm leading-relaxed text-slate-200">{currentState}</p>
 
@@ -242,7 +295,7 @@ function SkillCard({ skill, level }: SkillCardProps) {
       {expanded && (
         <div className="border-t border-slate-800 bg-slate-950/40 px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Full path
+            {uiCopy.fullPath}
           </p>
           <ol className="mt-2 space-y-2.5">
             {content.levels.map((info, i) => {
@@ -273,12 +326,12 @@ function SkillCard({ skill, level }: SkillCardProps) {
                       </p>
                       {isCurrent && (
                         <span className="rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-300">
-                          You
+                          {uiCopy.you}
                         </span>
                       )}
                       {isPast && (
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-                          Earned
+                          {uiCopy.earned}
                         </span>
                       )}
                     </div>
