@@ -28,9 +28,9 @@ _REASON_BY_ACTION: dict[LanguageCode, dict[RecommendedAction, str]] = {
     },
     "pt-BR": {
         "advance": "Otimo trabalho - pronto para avancar.",
-        "guided_retry": "Voce esta progredindo - mais uma tentativa focada.",
+        "guided_retry": "Você esta progredindo - mais uma tentativa focada.",
         "retry": "Vamos tentar de novo com um novo olhar.",
-        "end_lesson": "Voce fez um excelente trabalho hoje.",
+        "end_lesson": "Você fez um excelente trabalho hoje.",
     },
 }
 

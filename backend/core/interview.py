@@ -133,9 +133,12 @@ class InterviewAgent:
     student_name: str = ""
     _turn_count: int = 0
 
+    def _system_prompt(self) -> str:
+        return f"{_SYSTEM}\n\n{language_instruction(self.language)}"
+
     def __post_init__(self):
         # Seed with system prompt
-        self.history = [{"role": "system", "content": f"{_SYSTEM}\n\n{language_instruction(self.language)}"}]
+        self.history = [{"role": "system", "content": self._system_prompt()}]
         # Generate opening message
         opening = call_text(self._with_language(self.history + [{
             "role": "user",
@@ -145,11 +148,29 @@ class InterviewAgent:
         self._opening = opening
 
     def _with_language(self, messages: list[dict]) -> list[dict]:
-        """Append explicit language guardrail to each generation call."""
-        return messages + [{"role": "system", "content": language_instruction(self.language)}]
+        """Ensure the current system prompt uses the active language."""
+        normalized: list[dict] = []
+        has_system = False
+
+        for msg in messages:
+            if msg.get("role") == "system":
+                if not has_system:
+                    normalized.append({"role": "system", "content": self._system_prompt()})
+                    has_system = True
+                continue
+            normalized.append(msg)
+
+        if not has_system:
+            normalized.insert(0, {"role": "system", "content": self._system_prompt()})
+
+        return normalized
 
     def set_language(self, language: LanguageCode) -> None:
         self.language = language
+        if self.history and self.history[0].get("role") == "system":
+            self.history[0] = {"role": "system", "content": self._system_prompt()}
+        else:
+            self.history.insert(0, {"role": "system", "content": self._system_prompt()})
 
     @property
     def opening_message(self) -> str:
